@@ -1,0 +1,44 @@
+
+name: Extract and Build Quran APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download repository files
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Extract project ZIP
+        run: |
+          unzip -o noor-al-quran-app-foundation.zip -d extracted
+          find extracted -name package.json
+
+      - name: Locate project and install dependencies
+        run: |
+          PROJECT_DIR=$(dirname "$(find extracted -name package.json -print -quit)")
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "ERROR: package.json not found inside ZIP"
+            exit 1
+          fi
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          cd "$PROJECT_DIR"
+          npm install
+          npm run build
