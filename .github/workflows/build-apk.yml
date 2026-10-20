@@ -29,11 +29,14 @@ jobs:
       - name: Extract project
         run: |
           unzip -o noor-al-quran-app-foundation.zip -d extracted
+
           PROJECT_DIR="$(dirname "$(find extracted -name package.json -print -quit)")"
+
           if [ ! -f "$PROJECT_DIR/package.json" ]; then
-            echo "Project package.json not found"
+            echo "ERROR: package.json not found"
             exit 1
           fi
+
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
       - name: Install and build web app
@@ -45,23 +48,34 @@ jobs:
       - name: Prepare Capacitor
         run: |
           cd "$PROJECT_DIR"
+
           npm install @capacitor/core@8.5.3 @capacitor/cli@8.5.3 @capacitor/android@8.5.3
+
           if [ ! -f capacitor.config.ts ] && [ ! -f capacitor.config.json ] && [ ! -f capacitor.config.js ]; then
             printf '{"appId":"com.quran.app","appName":"Quran","webDir":"dist"}' > capacitor.config.json
           fi
-          if [ ! -d android ]; then
+
+          if [ ! -d android ] || [ ! -f android/gradle/wrapper/gradle-wrapper.jar ]; then
+            rm -rf android
             npx cap add android
           fi
+
           npx cap sync android
+
+      - name: Verify Gradle Wrapper
+        run: |
+          cd "$PROJECT_DIR/android"
+
+          if [ ! -f gradlew ] || [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
+            echo "ERROR: Gradle Wrapper files are missing"
+            exit 1
+          fi
+
+          chmod +x gradlew
 
       - name: Build Android APK
         run: |
           cd "$PROJECT_DIR/android"
-          if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
-            echo "Gradle wrapper JAR is missing"
-            exit 1
-          fi
-          chmod +x gradlew
           ./gradlew assembleDebug
 
       - name: Upload APK
